@@ -1,1 +1,0 @@
-# Encoding and decoding functions + message formats
