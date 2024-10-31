@@ -42,6 +42,7 @@ def main():
             if response.get('type') == 'AUTH_RESPONSE':
                 if response.get('status') == 'OK':
                     print("Welcome to BitTrickle!")
+                    print("Available commands are: get, lap, lpf, pub, sch, unp, xit")
                     authenticated = True
                 else:
                     print(f"Authentication failed: {response.get('reason')}")
