@@ -4,7 +4,7 @@ import sys
 import socket
 import threading
 import time
-from protcols import decode_message, encode_message
+from protocols import decode_message, encode_message
 
 if len(sys.argv) != 2:
     print("Usage: python3 client.py server_port")

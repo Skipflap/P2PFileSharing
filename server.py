@@ -5,7 +5,7 @@ import socket
 import threading
 import time
 from credentials import load_credentials
-from protcols import decode_message, encode_message
+from protocols import decode_message, encode_message
 from models import ActiveUser
 
 if len(sys.argv) != 2:
