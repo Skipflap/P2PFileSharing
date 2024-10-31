@@ -25,7 +25,7 @@ lock = threading.Lock()
 # Create UDP socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind(ADDRESS)
-print("Server is running and waiting for connections")
+print("Server is running and waiting for connections...")
 
 def handle_client_message(data, client_address):
     message = decode_message(data)
@@ -66,7 +66,29 @@ def handle_client_message(data, client_address):
                 print(f"Heartbeat received from '{username}'.")
             else:
                 print(f"Heartbeat received from inactive user '{username}'. Ignoring.")
-
+                
+    elif message_type == 'LAP':
+        username = message.get('username')
+        response = {'type': 'LAP_RESPONSE'}
+        
+        with lock:
+            if username not in active_users:
+                response['status'] = 'FAIL'
+                response['reason'] = 'User not authenticated'        
+                print(f"{client_address}: LAP request failed for user '{username}'")
+                
+            else:
+                peers = [user for user in active_users if user != username]
+                response['status'] = 'OK'
+                response['peers'] = peers
+                if peers:
+                    print(f"Sending list of active peers to '{username}': {peers}")
+                else: 
+                    print(f"Sending empty list of active peers to '{username}'")
+                    
+            server_socket.sendto(encode_message(**response), client_address)
+                
+                
 def remove_inactive_users():
     while True:
         time.sleep(1)

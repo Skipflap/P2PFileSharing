@@ -60,12 +60,52 @@ def main():
     # Start heartbeat thread
     threading.Thread(target=heartbeat, args=(username,), daemon=True).start()
 
-    # For testing purposes, keep the client running
+     # Interactive command loop
     try:
         while True:
-            time.sleep(1)
+            cmd = input("> ").strip()
+            if not cmd:
+                continue  # Ignore empty input
+
+            parts = cmd.split(' ', 1)
+            command = parts[0]
+
+            if command == 'lap':
+                # Send LAP request
+                message = encode_message(type='LAP', username=username)
+                client_socket.sendto(message, SERVER_ADDRESS)
+
+                try:
+                    data, _ = client_socket.recvfrom(BUFFER_SIZE)
+                    response = decode_message(data)
+                    if response.get('type') == 'LAP_RESPONSE':
+                        if response.get('status') == 'OK':
+                            peers = response.get('peers', [])
+                            if peers:
+                                print("Active peers:")
+                                for peer in peers:
+                                    print(peer)
+                            else:
+                                print("No active peers.")
+                        else:
+                            print(f"Failed to list active peers: {response.get('reason')}")
+                    else:
+                        print("Received unexpected response from server.")
+                except socket.timeout:
+                    print("No response from server. Please try again.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+
+            elif command == 'xit':
+                print("Goodbye!")
+                client_socket.close()
+                sys.exit(0)
+
+            else:
+                print("Unknown command. Available commands are: get, lap, lpf, pub, sch, unp, xit")
+
     except KeyboardInterrupt:
-        print("Exiting client.")
+        print("\nExiting client.")
         client_socket.close()
         sys.exit(0)
 
