@@ -1,15 +1,15 @@
 # Encoding and decoding functions + message formats
 # protocols.py
 
-def encode_message(**kwargs):
-    return str(kwargs).encode()
+import json
 
+
+def encode_message(**kwargs):
+    return json.dumps(kwargs).encode()
 
 def decode_message(data):
     try:
-        message = eval(data.decode())
+        message = json.loads(data.decode())
         return message
-    except:
+    except json.JSONDecodeError:
         return {}
-    
-    

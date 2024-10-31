@@ -15,12 +15,12 @@ if len(sys.argv) != 2:
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = int(sys.argv[1])
 ADDRESS = (SERVER_HOST, SERVER_PORT)
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 4096  # Increased buffer size to handle larger messages if needed
 
 # Load credentials
 credentials = load_credentials()
 active_users = {}
-user_published_files = {}  # New dictionary to store published files per user
+user_published_files = {}  # Separate dictionary to store published files per user
 lock = threading.Lock()
 
 # Create UDP socket

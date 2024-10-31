@@ -14,7 +14,7 @@ if len(sys.argv) != 2:
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = int(sys.argv[1])
 SERVER_ADDRESS = (SERVER_HOST, SERVER_PORT)
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 4096  # Increased buffer size to handle larger messages if needed
 
 # Create UDP socket
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
