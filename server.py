@@ -20,6 +20,7 @@ BUFFER_SIZE = 1024
 # Load credentials
 credentials = load_credentials()
 active_users = {}
+user_published_files = {}  # New dictionary to store published files per user
 lock = threading.Lock()
 
 # Create UDP socket
@@ -30,12 +31,12 @@ print("Server is running and waiting for connections...")
 def handle_client_message(data, client_address):
     message = decode_message(data)
     message_type = message.get('type')
-    
+
     if message_type == 'AUTH':
         username = message.get('username')
         password = message.get('password')
         response = {'type': 'AUTH_RESPONSE'}
-        
+
         with lock:
             if username not in credentials:
                 response['status'] = 'FAIL'
@@ -54,10 +55,10 @@ def handle_client_message(data, client_address):
                 # Add to active users
                 active_users[username] = ActiveUser(username, client_address)
                 print(f"{client_address}: User '{username}' authenticated and active.")
-        
+
         print(f"Sending response to {client_address}: {response}")
         server_socket.sendto(encode_message(**response), client_address)
-        
+
     elif message_type == 'HEARTBEAT':
         username = message.get('username')
         with lock:
@@ -66,29 +67,101 @@ def handle_client_message(data, client_address):
                 print(f"Heartbeat received from '{username}'.")
             else:
                 print(f"Heartbeat received from inactive user '{username}'. Ignoring.")
-                
+
     elif message_type == 'LAP':
         username = message.get('username')
         response = {'type': 'LAP_RESPONSE'}
-        
+
         with lock:
             if username not in active_users:
                 response['status'] = 'FAIL'
-                response['reason'] = 'User not authenticated'        
-                print(f"{client_address}: LAP request failed for user '{username}'")
-                
+                response['reason'] = 'User not authenticated.'
+                print(f"{client_address}: LAP request failed for user '{username}' - not authenticated.")
             else:
                 peers = [user for user in active_users if user != username]
                 response['status'] = 'OK'
                 response['peers'] = peers
                 if peers:
                     print(f"Sending list of active peers to '{username}': {peers}")
-                else: 
-                    print(f"Sending empty list of active peers to '{username}'")
-                    
-            server_socket.sendto(encode_message(**response), client_address)
-                
-                
+                else:
+                    print(f"Sending empty list of active peers to '{username}'.")
+
+        server_socket.sendto(encode_message(**response), client_address)
+
+    elif message_type == 'LPF':
+        username = message.get('username')
+        response = {'type': 'LPF_RESPONSE'}
+
+        with lock:
+            if username not in active_users:
+                response['status'] = 'FAIL'
+                response['reason'] = 'User not authenticated.'
+                print(f"{client_address}: LPF request failed for user '{username}' - not authenticated.")
+            else:
+                files = list(user_published_files.get(username, []))  # Fetch published files
+                if files:
+                    response['status'] = 'OK'
+                    response['files'] = files
+                    print(f"Sending list of published files to '{username}': {files}")
+                else:
+                    response['status'] = 'OK'
+                    response['files'] = []
+                    print(f"Sending empty list of published files to '{username}'.")
+
+        server_socket.sendto(encode_message(**response), client_address)
+
+    elif message_type == 'PUB':
+        username = message.get('username')
+        filename = message.get('filename')
+        response = {'type': 'PUB_RESPONSE'}
+
+        with lock:
+            if username not in active_users:
+                response['status'] = 'FAIL'
+                response['reason'] = 'User not authenticated.'
+                print(f"{client_address}: PUB request failed for user '{username}' - not authenticated.")
+            else:
+                if username not in user_published_files:
+                    user_published_files[username] = set()
+                if filename in user_published_files[username]:
+                    response['status'] = 'OK'
+                    response['message'] = 'File already published.'
+                    print(f"User '{username}' attempted to publish '{filename}' which is already published.")
+                else:
+                    user_published_files[username].add(filename)
+                    response['status'] = 'OK'
+                    response['message'] = 'File published successfully.'
+                    print(f"User '{username}' published file '{filename}'.")
+
+        server_socket.sendto(encode_message(**response), client_address)
+
+    elif message_type == 'UNP':
+        username = message.get('username')
+        filename = message.get('filename')
+        response = {'type': 'UNP_RESPONSE'}
+
+        with lock:
+            if username not in active_users:
+                response['status'] = 'FAIL'
+                response['reason'] = 'User not authenticated.'
+                print(f"{client_address}: UNP request failed for user '{username}' - not authenticated.")
+            else:
+                if username in user_published_files and filename in user_published_files[username]:
+                    user_published_files[username].remove(filename)
+                    response['status'] = 'OK'
+                    response['message'] = 'File unpublished successfully.'
+                    print(f"User '{username}' unpublished file '{filename}'.")
+                else:
+                    response['status'] = 'FAIL'
+                    response['reason'] = 'File not found.'
+                    print(f"User '{username}' attempted to unpublish non-existent file '{filename}'.")
+
+        server_socket.sendto(encode_message(**response), client_address)
+
+    else:
+        print(f"Received unknown message type from {client_address}: {message_type}")
+        # Optionally, send an error response
+
 def remove_inactive_users():
     while True:
         time.sleep(1)
