@@ -183,12 +183,44 @@ def main():
                 except Exception as e:
                     print(f"An error occurred: {e}")
 
+            elif command == 'sch':
+                # Handle search command
+                if len(parts) != 2:
+                    print("Usage: sch <substring>")
+                    continue
+                substring = parts[1]
+
+                # Send SCH request
+                message = encode_message(type='SCH', username=username, substring=substring)
+                client_socket.sendto(message, SERVER_ADDRESS)
+
+                try:
+                    data, _ = client_socket.recvfrom(BUFFER_SIZE)
+                    response = decode_message(data)
+                    if response.get('type') == 'SCH_RESPONSE':
+                        if response.get('status') == 'OK':
+                            matching_files = response.get('files', [])
+                            if matching_files:
+                                print("Matching files:")
+                                for file in matching_files:
+                                    print(file)
+                            else:
+                                print("No matching files found.")
+                        else:
+                            print(f"Failed to search files: {response.get('reason')}")
+                    else:
+                        print("Received unexpected response from server.")
+                except socket.timeout:
+                    print("No response from server. Please try again.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+
             elif command == 'xit':
                 print("Goodbye!")
                 client_socket.close()
                 sys.exit(0)
 
-            else:
+            else:  
                 print("Unknown command. Available commands are: get, lap, lpf, pub, sch, unp, xit")
 
     except KeyboardInterrupt:
