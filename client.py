@@ -34,11 +34,13 @@ def heartbeat(username):
         message = encode_message(type='HEARTBEAT', username=username)
         client_socket.sendto(message, SERVER_ADDRESS)
         
+
 def tcp_server():
     while True:
         conn, addr = tcp_socket.accept()
         threading.Thread(target=handle_file_request, args=(conn, addr)).start()
         
+
 def handle_file_request(conn, addr):
     try:
         # Receive file request
@@ -65,6 +67,16 @@ def handle_file_request(conn, addr):
         print(f"Error handling file request from {addr}: {e}")
     finally:
         conn.close()
+
+
+def pluralize(count, singular, plural=None):
+    """
+    Helper function to return the singular or plural form based on the count.
+    """
+    if count == 1:
+        return singular
+    else:
+        return plural if plural else singular + 's'
 
 
 def main():
@@ -102,7 +114,7 @@ def main():
     # Start heartbeat thread
     threading.Thread(target=heartbeat, args=(username,), daemon=True).start()
 
-     # Start TCP server thread
+    # Start TCP server thread
     threading.Thread(target=tcp_server, daemon=True).start()
 
     # Interactive command loop
@@ -126,12 +138,14 @@ def main():
                     if response.get('type') == 'LAP_RESPONSE':
                         if response.get('status') == 'OK':
                             peers = response.get('peers', [])
+                            peer_count = len(peers)
+                            peer_label = pluralize(peer_count, "active peer")
                             if peers:
-                                print("Active peers:")
+                                print(f"{peer_count} {peer_label}:")
                                 for peer in peers:
                                     print(peer)
                             else:
-                                print("No active peers.")
+                                print(f"{peer_count} {peer_label}.")
                         else:
                             print(f"Failed to list active peers: {response.get('reason')}")
                     else:
@@ -152,12 +166,14 @@ def main():
                     if response.get('type') == 'LPF_RESPONSE':
                         if response.get('status') == 'OK':
                             files = response.get('files', [])
+                            file_count = len(files)
+                            file_label = pluralize(file_count, "file published")
                             if files:
-                                print("Published files:")
+                                print(f"{file_count} {file_label}:")
                                 for file in files:
                                     print(file)
                             else:
-                                print("No files published.")
+                                print(f"{file_count} {file_label}.")
                         else:
                             print(f"Failed to list published files: {response.get('reason')}")
                     else:
@@ -244,12 +260,14 @@ def main():
                     if response.get('type') == 'SCH_RESPONSE':
                         if response.get('status') == 'OK':
                             matching_files = response.get('files', [])
+                            file_count = len(matching_files)
+                            file_label = pluralize(file_count, "file found")
                             if matching_files:
-                                print("Matching files:")
+                                print(f"{file_count} {file_label}:")
                                 for file in matching_files:
                                     print(file)
                             else:
-                                print("No matching files found.")
+                                print(f"{file_count} {file_label}.")
                         else:
                             print(f"Failed to search files: {response.get('reason')}")
                     else:
@@ -307,7 +325,7 @@ def main():
 def download_file(filename, peer_ip, peer_tcp_port):
     try:
         # Create a TCP socket and connect to the peer
-        print(f"Attempting to connect to {peer_ip}:{peer_tcp_port}")
+        #print(f"Attempting to connect to {peer_ip}:{peer_tcp_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((peer_ip, int(peer_tcp_port)))
             # Send file request
@@ -323,6 +341,7 @@ def download_file(filename, peer_ip, peer_tcp_port):
             print(f"'{filename}' downloaded successfully")
     except Exception as e:
         print(f"Failed to download file '{filename}': {e}")
+
 
 if __name__ == '__main__':
     main()
