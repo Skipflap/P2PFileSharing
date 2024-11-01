@@ -20,11 +20,52 @@ BUFFER_SIZE = 4096  # Increased buffer size to handle larger messages if needed
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 client_socket.settimeout(5)  # Set timeout for socket operations
 
+# Create TCP socket
+tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+tcp_socket.bind((SERVER_HOST, 0))
+tcp_socket.listen()
+tcp_port = tcp_socket.getsockname()[1]
+#print(f"TCP socket bound to port {tcp_port}")
+
+
 def heartbeat(username):
     while True:
         time.sleep(2)
         message = encode_message(type='HEARTBEAT', username=username)
         client_socket.sendto(message, SERVER_ADDRESS)
+        
+def tcp_server():
+    while True:
+        conn, addr = tcp_socket.accept()
+        threading.Thread(target=handle_file_request, args=(conn, addr)).start()
+        
+def handle_file_request(conn, addr):
+    try:
+        # Receive file request
+        data = conn.recv(1024)
+        message = decode_message(data)
+        if message.get('type') == 'FILE_REQUEST':
+            filename = message.get('filename')
+            # Open the file and send it
+            if os.path.isfile(filename):
+                with open(filename, 'rb') as f:
+                    # Read and send the file in chunks
+                    while True:
+                        bytes_read = f.read(1024)
+                        if not bytes_read:
+                            break
+                        conn.sendall(bytes_read)
+                print(f"File '{filename}' sent to {addr}")
+            else:
+                print(f"Requested file '{filename}' not found.")
+                # Optionally, send an error message
+        else:
+            print(f"Received invalid file request from {addr}")
+    except Exception as e:
+        print(f"Error handling file request from {addr}: {e}")
+    finally:
+        conn.close()
+
 
 def main():
     authenticated = False
@@ -33,13 +74,13 @@ def main():
         username = input("Enter username: ")
         password = input("Enter password: ")
 
-        message = encode_message(type='AUTH', username=username, password=password)
+        message = encode_message(type='AUTH', username=username, password=password, tcp_port=tcp_port)
+        #print(f"sending AUTH message: {message}")
         client_socket.sendto(message, SERVER_ADDRESS)
 
         try:
             data, _ = client_socket.recvfrom(BUFFER_SIZE)
             response = decode_message(data)
-            # print(f"Received response from server: {response}")  # Optional: Comment out for cleaner output
             if response.get('type') == 'AUTH_RESPONSE':
                 if response.get('status') == 'OK':
                     print("Welcome to BitTrickle!")
@@ -60,6 +101,9 @@ def main():
 
     # Start heartbeat thread
     threading.Thread(target=heartbeat, args=(username,), daemon=True).start()
+
+     # Start TCP server thread
+    threading.Thread(target=tcp_server, daemon=True).start()
 
     # Interactive command loop
     try:
@@ -215,6 +259,37 @@ def main():
                 except Exception as e:
                     print(f"An error occurred: {e}")
 
+            elif command == 'get':
+                if len(parts) != 2:
+                    print("Usage: get <filename>")
+                    continue
+                filename = parts[1]
+
+                # Send GET request to server
+                message = encode_message(type='GET', username=username, filename=filename)
+                client_socket.sendto(message, SERVER_ADDRESS)
+
+                try:
+                    data, _ = client_socket.recvfrom(BUFFER_SIZE)
+                    response = decode_message(data)
+                    #print(f"Received GET_RESPONSE: {response}")
+                    if response.get('type') == 'GET_RESPONSE':
+                        if response.get('status') == 'OK':
+                            # Get peer details
+                            peer_ip = response.get('peer_ip')
+                            peer_tcp_port = response.get('peer_tcp_port')
+                            peer_username = response.get('peer_username')
+                            # Connect to peer's TCP welcoming socket
+                            threading.Thread(target=download_file, args=(filename, peer_ip, peer_tcp_port)).start()
+                        else:
+                            print(f"Failed to get file: {response.get('reason')}")
+                    else:
+                        print("Received unexpected response from server.")
+                except socket.timeout:
+                    print("No response from server. Please try again.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    
             elif command == 'xit':
                 print("Goodbye!")
                 client_socket.close()
@@ -227,6 +302,27 @@ def main():
         print("\nExiting client.")
         client_socket.close()
         sys.exit(0)
+
+
+def download_file(filename, peer_ip, peer_tcp_port):
+    try:
+        # Create a TCP socket and connect to the peer
+        print(f"Attempting to connect to {peer_ip}:{peer_tcp_port}")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((peer_ip, int(peer_tcp_port)))
+            # Send file request
+            message = encode_message(type='FILE_REQUEST', filename=filename)
+            s.sendall(message)
+            # Open file for writing
+            with open(filename, 'wb') as f:
+                while True:
+                    data = s.recv(1024)
+                    if not data:
+                        break
+                    f.write(data)
+            print(f"'{filename}' downloaded successfully")
+    except Exception as e:
+        print(f"Failed to download file '{filename}': {e}")
 
 if __name__ == '__main__':
     main()

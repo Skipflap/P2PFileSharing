@@ -36,6 +36,9 @@ def handle_client_message(data, client_address):
     if message_type == "AUTH":
         username = message.get("username")
         password = message.get("password")
+        #print(f"Received AUTH message from '{username}': {message}")
+        tcp_port = message.get("tcp_port")
+        #print(f"Extracted tcp_port from message: {tcp_port}")
         response = {"type": "AUTH_RESPONSE"}
 
         with lock:
@@ -60,10 +63,11 @@ def handle_client_message(data, client_address):
             else:
                 response["status"] = "OK"
                 # Add to active users
-                active_users[username] = ActiveUser(username, client_address)
+                active_users[username] = ActiveUser(username, client_address, tcp_port)
                 print(f"{client_address}: User '{username}' authenticated and active.")
 
-        print(f"Sending response to {client_address}: {response}")
+        #print(f"Sending response to {client_address}: {response}")
+        #print(f"Stored tcp_port for user '{username}': {active_users[username].tcp_port}")
         server_socket.sendto(encode_message(**response), client_address)
 
     elif message_type == "HEARTBEAT":
@@ -208,11 +212,46 @@ def handle_client_message(data, client_address):
                     )
 
         server_socket.sendto(encode_message(**response), client_address)
+        
+    elif message_type == "GET":
+        username = message.get('username')
+        filename = message.get('filename')
+        response = {'type': 'GET_RESPONSE'}
+        
+        with lock:
+            if username not in active_users:
+                response['status'] = 'FAIL'
+                response['reason'] = 'User not authenticated.'
+                print(f"{client_address}: GET request failed for user '{username}' - not authenticated.")
+            else:
+                # Find active peers that have published the file
+                peers_with_file = []
+                for user, files in user_published_files.items():
+                    if user != username and filename in files and user in active_users:
+                        peer_user = active_users[user]
+                        peers_with_file.append(peer_user)
+                if peers_with_file:
+                    # Select one peer arbitrarily
+                    selected_peer = peers_with_file[0]
+                    response['status'] = 'OK'
+                    response['peer_username'] = selected_peer.username
+                    response['peer_ip'] = selected_peer.address[0]  # IP address
+                    #print(f"Selected peer '{selected_peer.username}' has tcp_port '{selected_peer.tcp_port}'")
+                    response['peer_tcp_port'] = selected_peer.tcp_port  # TCP port
+                    print(f"User '{username}' requested file '{filename}'. Provided peer '{selected_peer.username}'.")
+                else:
+                    response['status'] = 'FAIL'
+                    response['reason'] = 'No active peers have the requested file.'
+                    print(f"User '{username}' requested file '{filename}', but no active peers have it.")
+                    
+        print(f"Sending GET_RESPONSE to {client_address}: {response}")
+        server_socket.sendto(encode_message(**response), client_address)
+        
 
     else:
         print(f"Received unknown message type from {client_address}: {message_type}")
         # Optionally, send an error response
-
+    
 
 def remove_inactive_users():
     while True:
