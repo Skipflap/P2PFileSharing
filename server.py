@@ -137,7 +137,7 @@ def handle_client_message(data, client_address):
                     user_published_files[username] = set()
                 if filename in user_published_files[username]:
                     response["status"] = "OK"
-                    response["message"] = "File already published."
+                    response["message"] = "File published successfully."
                     print(f"{timestamp}: {client_port}: User '{username}' attempted to publish '{filename}' which is already published.")
                 else:
                     user_published_files[username].add(filename)
@@ -271,14 +271,6 @@ def remove_inactive_users():
             ]
             for username in inactive_users:
                 del active_users[username]
-                # Remove user's published files from file_to_users
-                if username in user_published_files:
-                    for filename in user_published_files[username]:
-                        if filename in file_to_users:
-                            file_to_users[filename].discard(username)
-                            if not file_to_users[filename]:
-                                del file_to_users[filename]
-                    del user_published_files[username]
                 print(f"{get_timestamp()}: User '{username}' removed due to inactivity.")
 
 
