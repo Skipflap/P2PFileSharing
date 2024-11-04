@@ -1,5 +1,4 @@
 # Utility functions
-# utils.py
 
 import threading
 

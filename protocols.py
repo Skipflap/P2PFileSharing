@@ -1,5 +1,4 @@
 # Encoding and decoding functions + message formats
-# protocols.py
 
 import json
 

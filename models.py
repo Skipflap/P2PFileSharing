@@ -1,5 +1,4 @@
 # Data structures for users, files and peers.
-# models.py
 
 import time
 

@@ -1,5 +1,4 @@
 # Handles loading and managing user credentials
-# credentials.py
 
 def load_credentials(filename = 'credentials.txt') :
     credentials = {}
