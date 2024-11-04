@@ -2,7 +2,6 @@
 
 import json
 
-
 def encode_message(**kwargs):
     return json.dumps(kwargs).encode()
 

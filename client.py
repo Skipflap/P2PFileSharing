@@ -1,5 +1,3 @@
-# client.py
-
 import sys
 import socket
 import threading
@@ -51,11 +49,11 @@ def handle_file_request(conn, addr):
                         if not bytes_read:
                             break
                         conn.sendall(bytes_read)
-                print(f"File '{filename}' sent to {addr}")
+                print(f"File '{filename}' sent to peer")
             else:
                 print(f"Requested file '{filename}' not found.")
         else:
-            print(f"Received invalid file request from {addr}")
+            print(f"Received invalid file request from peer")
     except Exception as e:
         print(f"Error handling file request from {addr}: {e}")
     finally:

@@ -1,5 +1,3 @@
-# server.py
-
 import sys
 import socket
 import threading
@@ -284,7 +282,7 @@ def handle_client_message(data, client_address):
                     )
 
         print(
-            f"{timestamp}: {client_port}: Sending GET_RESPONSE to {client_address}: {response}"
+            f"{timestamp}: {client_port}: Sending GET_RESPONSE to {username}:"
         )
         server_socket.sendto(encode_message(**response), client_address)
 
