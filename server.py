@@ -16,7 +16,7 @@ if len(sys.argv) != 2:
 SERVER_HOST = "127.0.0.1"
 SERVER_PORT = int(sys.argv[1])
 ADDRESS = (SERVER_HOST, SERVER_PORT)
-BUFFER_SIZE = 4096
+BUFFER_SIZE = 2048 # extra memory just in case
 
 credentials = load_credentials()
 active_users = {}
